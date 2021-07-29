@@ -29,30 +29,165 @@ const initializeDBAndServer = async () => {
 initializeDBAndServer();
 
 const checkValidProperty = (request, response, next) => {
-  const { search_q, priority, category, status } = request.query;
-  if (priority !== undefined) {
-    if (priority === "HIGH" || priority === "MEDIUM" || priority === "LOW") {
+  let { dueDate, priority, category, status } = request.query;
+  switch (true) {
+    case priority !== undefined && status !== undefined:
+      if (
+        (priority === "HIGH" || priority === "MEDIUM" || priority === "LOW") &&
+        (status === "TO DO" || status === "IN PROGRESS" || status === "DONE")
+      ) {
+        next();
+      } else if (
+        !(status === "TO DO" || status === "IN PROGRESS" || status === "DONE")
+      ) {
+        response.status(400);
+        response.send("Invalid Todo Status");
+      } else {
+        response.status(400);
+        response.send("Invalid Todo Priority");
+      }
+      break;
+
+    case category !== undefined && status !== undefined:
+      if (
+        (category === "WORK" ||
+          category === "HOME" ||
+          category === "LEARNING") &&
+        (status === "TO DO" || status === "IN PROGRESS" || status === "DONE")
+      ) {
+        next();
+      } else if (
+        !(status === "TO DO" || status === "IN PROGRESS" || status === "DONE")
+      ) {
+        response.status(400);
+        response.send("Invalid Todo Status");
+      } else {
+        response.status(400);
+        response.send("Invalid Todo Category");
+      }
+      break;
+
+    case priority !== undefined && category !== undefined:
+      if (
+        (priority === "HIGH" || priority === "MEDIUM" || priority === "LOW") &&
+        (category === "WORK" || category === "HOME" || category === "LEARNING")
+      ) {
+        next();
+      } else if (
+        !(category === "WORK" || category === "HOME" || category === "LEARNING")
+      ) {
+        response.status(400);
+        response.send("Invalid Todo Category");
+      } else {
+        response.status(400);
+        response.send("Invalid Todo Priority");
+      }
+      break;
+
+    case status !== undefined:
+      if (status === "TO DO" || status === "IN PROGRESS" || status === "DONE") {
+        next();
+      } else {
+        response.status(400);
+        response.send("Invalid Todo Status");
+      }
+      break;
+
+    case priority !== undefined:
+      if (priority === "HIGH" || priority === "MEDIUM" || priority === "LOW") {
+        next();
+      } else {
+        response.status(400);
+        response.send("Invalid Todo Priority");
+      }
+      break;
+
+    case category !== undefined:
+      if (
+        category === "WORK" ||
+        category === "HOME" ||
+        category === "LEARNING"
+      ) {
+        next();
+      } else {
+        response.status(400);
+        response.send("Invalid Todo Category");
+      }
+      break;
+
+    default:
       next();
-    } else {
-      response.status(400);
-      response.send("Invalid Todo Priority");
-    }
+      break;
   }
-  if (status !== undefined) {
-    if (status === "TO DO" || status === "IN PROGRESS" || status === "DONE") {
+};
+
+const checkValidPropertyPut = (request, response, next) => {
+  let { todo, dueDate, priority, category, status } = request.body;
+  switch (true) {
+    case status !== undefined:
+      if (status === "TO DO" || status === "IN PROGRESS" || status === "DONE") {
+        next();
+      } else {
+        response.status(400);
+        response.send("Invalid Todo Status");
+      }
+      break;
+
+    case priority !== undefined:
+      if (priority === "HIGH" || priority === "MEDIUM" || priority === "LOW") {
+        next();
+      } else {
+        response.status(400);
+        response.send("Invalid Todo Priority");
+      }
+      break;
+
+    case category !== undefined:
+      if (
+        category === "WORK" ||
+        category === "HOME" ||
+        category === "LEARNING"
+      ) {
+        next();
+      } else {
+        response.status(400);
+        response.send("Invalid Todo Category");
+      }
+      break;
+
+    default:
       next();
-    } else {
-      response.status(400);
-      response.send("Invalid Todo Status");
-    }
+      break;
   }
-  if (category !== undefined) {
-    if (category === "WORK" || category === "HOME" || category === "LEARNING") {
-      next();
-    } else {
-      response.status(400);
-      response.send("Invalid Todo Category");
-    }
+};
+
+const checkValidPropertyPost = (request, response, next) => {
+  let { dueDate, priority, category, status } = request.body;
+  if (
+    (priority === "HIGH" || priority === "MEDIUM" || priority === "LOW") &&
+    (status === "TO DO" || status === "IN PROGRESS" || status === "DONE") &&
+    (category === "WORK" || category === "HOME" || category === "LEARNING") &&
+    dueDate !== undefined
+  ) {
+    next();
+  } else if (
+    !(status === "TO DO" || status === "IN PROGRESS" || status === "DONE")
+  ) {
+    response.status(400);
+    response.send("Invalid Todo Status");
+  } else if (
+    !(category === "WORK" || category === "HOME" || category === "LEARNING")
+  ) {
+    response.status(400);
+    response.send("Invalid Todo Category");
+  } else if (
+    !(priority === "HIGH" || priority === "MEDIUM" || priority === "LOW")
+  ) {
+    response.status(400);
+    response.send("Invalid Todo Priority");
+  } else if (dueDate === undefined) {
+    response.status(400);
+    response.send("Invalid Due Date");
   }
 };
 
@@ -138,12 +273,12 @@ app.get("/agenda/", async (request, response) => {
         FROM todo
         WHERE due_date = '${date}';
     `;
-  const result = await db.get(getTodoQuery);
+  const result = await db.all(getTodoQuery);
   response.send(result);
 });
 
 //API 4
-app.post("/todos/", checkValidProperty, async (request, response) => {
+app.post("/todos/", checkValidPropertyPost, async (request, response) => {
   const { id, todo, priority, status, category, dueDate } = request.body;
   const addTodoQuery = `
         INSERT INTO
@@ -156,7 +291,7 @@ app.post("/todos/", checkValidProperty, async (request, response) => {
 });
 
 //API 5
-app.put("/todos/:todoId/", checkValidProperty, async (request, response) => {
+app.put("/todos/:todoId/", checkValidPropertyPut, async (request, response) => {
   const { todoId } = request.params;
   const { status, priority, todo, category, dueDate } = request.body;
   let updateTodoQuery = "";

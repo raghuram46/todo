@@ -1,4 +1,13 @@
-GET http://localhost:3000/todos/?status=TO%20DO
+GET http://localhost:3000/todos/?category=LEARNING&priority=HIGH
+
+###
+
+
+GET http://localhost:3000/todos/1/
+
+###
+
+GET http://localhost:3000/agenda/?date=2021-02-22
 
 ###
 
@@ -16,7 +25,7 @@ Content-Type: application/json
 
 ###
 
-PUT http://localhost:3000/todos/:todoId/
+PUT http://localhost:3000/todos/1/
 Content-Type: application/json
 
 {
