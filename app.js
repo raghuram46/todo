@@ -6,6 +6,8 @@ const { open } = require("sqlite");
 const sqlite3 = require("sqlite3");
 
 const format = require("date-fns/format");
+const isValid = require("date-fns/isValid");
+const isMatch = require("date-fns/isMatch");
 
 const path = require("path");
 const dbPath = path.join(__dirname, "todoApplication.db");
@@ -114,6 +116,19 @@ const checkValidProperty = (request, response, next) => {
         response.send("Invalid Todo Category");
       }
       break;
+    case dueDate !== undefined:
+      if (isValid(new Date(dueDate))) {
+        if (isMatch(dueDate, "yyyy-MM-dd")) {
+          next();
+        } else {
+          response.status(400);
+          response.send("Invalid Due Date");
+        }
+      } else {
+        response.status(400);
+        response.send("Invalid Due Date");
+      }
+      break;
 
     default:
       next();
@@ -155,6 +170,20 @@ const checkValidPropertyPut = (request, response, next) => {
       }
       break;
 
+    case dueDate !== undefined:
+      if (isValid(new Date(dueDate))) {
+        if (isMatch(dueDate, "yyyy-MM-dd")) {
+          next();
+        } else {
+          response.status(400);
+          response.send("Invalid Due Date");
+        }
+      } else {
+        response.status(400);
+        response.send("Invalid Due Date");
+      }
+      break;
+
     default:
       next();
       break;
@@ -167,7 +196,7 @@ const checkValidPropertyPost = (request, response, next) => {
     (priority === "HIGH" || priority === "MEDIUM" || priority === "LOW") &&
     (status === "TO DO" || status === "IN PROGRESS" || status === "DONE") &&
     (category === "WORK" || category === "HOME" || category === "LEARNING") &&
-    dueDate !== undefined
+    isValid(new Date(dueDate))
   ) {
     next();
   } else if (
@@ -185,7 +214,7 @@ const checkValidPropertyPost = (request, response, next) => {
   ) {
     response.status(400);
     response.send("Invalid Todo Priority");
-  } else if (dueDate === undefined) {
+  } else if (!isValid(new Date(dueDate))) {
     response.status(400);
     response.send("Invalid Due Date");
   }
@@ -267,27 +296,62 @@ app.get("/todos/:todoId", async (request, response) => {
 
 //API 3
 app.get("/agenda/", async (request, response) => {
-  const { date } = request.query;
-  getTodoQuery = `
-        SELECT id, todo, priority, category, status, due_date AS dueDate
-        FROM todo
-        WHERE due_date = '${date}';
-    `;
-  const result = await db.all(getTodoQuery);
-  response.send(result);
+  let { date } = request.query;
+
+  if (isValid(new Date(date))) {
+    if (isMatch(date, "yyyy-M-dd")) {
+      date = format(new Date(date), "yyyy-MM-dd");
+      getTodoQuery = `
+            SELECT id, todo, priority, category, status, due_date AS dueDate
+            FROM todo
+            WHERE due_date = '${date}';
+        `;
+      const result = await db.all(getTodoQuery);
+      response.send(result);
+    } else if (isMatch(date, "yyyy-MM-dd")) {
+      getTodoQuery = `
+            SELECT id, todo, priority, category, status, due_date AS dueDate
+            FROM todo
+            WHERE due_date = '${date}';
+        `;
+      const result = await db.all(getTodoQuery);
+      response.send(result);
+    } else {
+      response.status(400);
+      response.send("Invalid Due Date");
+    }
+  } else {
+    response.status(400);
+    response.send("Invalid Due Date");
+  }
 });
 
 //API 4
 app.post("/todos/", checkValidPropertyPost, async (request, response) => {
-  const { id, todo, priority, status, category, dueDate } = request.body;
-  const addTodoQuery = `
-        INSERT INTO
-            todo(id, todo, priority, status, category, due_date)
-        VALUES
-            (${id}, '${todo}', '${priority}', '${status}', '${category}', '${dueDate}');
-    `;
-  await db.run(addTodoQuery);
-  response.send("Todo Successfully Added");
+  let { id, todo, priority, status, category, dueDate } = request.body;
+  if (isMatch(dueDate, "yyyy-MM-dd")) {
+    const addTodoQuery = `
+            INSERT INTO
+                todo(id, todo, priority, status, category, due_date)
+            VALUES
+                (${id}, '${todo}', '${priority}', '${status}', '${category}', '${dueDate}');
+        `;
+    await db.run(addTodoQuery);
+    response.send("Todo Successfully Added");
+  } else if (isMatch(dueDate, "yyyy-M-dd")) {
+    dueDate = format(new Date(dueDate), "yyyy-MM-dd");
+    const addTodoQuery = `
+            INSERT INTO
+                todo(id, todo, priority, status, category, due_date)
+            VALUES
+                (${id}, '${todo}', '${priority}', '${status}', '${category}', '${dueDate}');
+        `;
+    await db.run(addTodoQuery);
+    response.send("Todo Successfully Added");
+  } else {
+    response.status(400);
+    response.send("Invalid Due Date");
+  }
 });
 
 //API 5
